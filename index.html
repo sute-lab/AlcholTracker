@@ -217,6 +217,8 @@
     align-items: center; justify-content: center; font-size: 12px; font-family: var(--mono);
     cursor: pointer; color: var(--text2); background: var(--bg2);
     transition: all .15s; border: 1px solid transparent; position: relative;
+    min-width: 0;  /* ★追加：横にはみ出さないようにする魔法のコード */
+  　min-height: 0; /* ★追加：縦方向のレイアウト崩れや重なりを防ぐ */
   }
   .cal-day:hover { background: var(--bg3); }
   .cal-day.has-record { background: rgba(196,74,30,0.1); color: var(--accent); font-weight: 700; border-color: rgba(196,74,30,0.2); }
@@ -587,6 +589,11 @@ function showCalDetail(ds){
     </div>`).join('');
   const total = recs.reduce((s,r)=>s+r.alc,0);
   document.getElementById('cal-detail-total').textContent = total.toFixed(1)+'g';
+  // ★ここから追加：詳細が表示されたら、そこまで自動でふわっとスクロールする
+  setTimeout(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
+  // ★追加ここまで
 }
 
 function calMove(dir){
