@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f7f4ee">
+<title>飲酒レコード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --bg2: #edeae2;
+    --bg3: #e3dfd6;
+    --card: #ffffff;
+    --text: #1a1814;
+    --text2: #6b6760;
+    --text3: #9e9b97;
+    --accent: #c44a1e;
+    --accent2: #e8b84b;
+    --blue: #2563a8;
+    --green: #2d7a3a;
+    --border: rgba(26,24,20,0.1);
+    --border2: rgba(26,24,20,0.06);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --font: 'Noto Sans JP', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18160f;
+      --bg2: #1f1d14;
+      --bg3: #27241a;
+      --card: #222016;
+      --text: #f0ece2;
+      --text2: #9e9a90;
+      --text3: #6b6860;
+      --accent: #e05a28;
+      --accent2: #e8b84b;
+      --blue: #5b9fd4;
+      --green: #5aad68;
+      --border: rgba(240,236,226,0.1);
+      --border2: rgba(240,236,226,0.06);
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; height: 100dvh; max-width: 440px; margin: 0 auto; }
+  .header {
+    padding: 20px 20px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border2);
+    flex-shrink: 0;
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 36px; height: 36px; background: var(--accent);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .logo-text { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .today-badge {
+    font-size: 12px; font-family: var(--mono); color: var(--text2);
+    background: var(--bg2); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 20px;
+  }
+
+  /* Nav */
+  .nav {
+    display: flex; gap: 2px; padding: 10px 20px 0;
+    background: var(--bg);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    flex: 1; min-width: 60px; padding: 8px 4px; border: none; background: transparent;
+    color: var(--text3); font-family: var(--font); font-size: 12px; font-weight: 500;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all .15s; white-space: nowrap; text-align: center;
+  }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 16px 20px 32px; }
+
+  /* Page */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    box-shadow: var(--shadow); margin-bottom: 12px;
+  }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--text2); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 14px; }
+
+  /* Form */
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 5px; letter-spacing: 0.2px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  input[type=date], input[type=number], input[type=text], select, textarea {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-family: var(--font); font-size: 14px;
+    color: var(--text); outline: none; appearance: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(196,74,30,0.12);
+  }
+  input[type=number] { font-family: var(--mono); }
+  textarea { resize: none; height: 64px; }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239e9b97' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+  /* Alc preview */
+  .alc-preview {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 12px;
+    display: flex; align-items: baseline; gap: 4px;
+  }
+  .alc-val { font-family: var(--mono); font-size: 20px; font-weight: 500; }
+  .alc-unit { font-size: 12px; color: var(--text2); }
+  .alc-ok { color: var(--green); }
+  .alc-warn { color: var(--accent2); }
+  .alc-over { color: var(--accent); }
+
+  /* Button */
+  .btn {
+    width: 100%; padding: 13px; border: none;
+    border-radius: var(--radius-sm); font-family: var(--font);
+    font-size: 15px; font-weight: 700; cursor: pointer; transition: all .15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #b03d14; }
+  .btn-primary:active { transform: scale(0.98); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: var(--bg); padding: 10px 20px;
+    border-radius: 24px; font-size: 13px; font-weight: 500;
+    opacity: 0; transition: all .25s; z-index: 999; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Record list */
+  .record-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; border-bottom: 1px solid var(--border2);
+  }
+  .record-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .record-left { flex: 1; min-width: 0; }
+  .record-type { font-weight: 700; font-size: 14px; }
+  .record-meta { font-size: 12px; color: var(--text2); margin-top: 2px; font-family: var(--mono); }
+  .record-note { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .record-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .record-alc {
+    font-family: var(--mono); font-size: 15px; font-weight: 500;
+    color: var(--accent); min-width: 48px; text-align: right;
+  }
+  .del-btn {
+    width: 28px; height: 28px; border: 1px solid var(--border);
+    background: var(--bg2); border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text3); font-size: 14px; transition: all .15s;
+  }
+  .del-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .empty { text-align: center; padding: 32px 0; color: var(--text3); font-size: 14px; }
+  .empty-icon { font-size: 32px; margin-bottom: 8px; }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .metric {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .metric-val { font-family: var(--mono); font-size: 24px; font-weight: 500; line-height: 1.1; }
+  .metric-lbl { font-size: 11px; color: var(--text2); margin-top: 4px; font-weight: 500; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* Calendar */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-nav-btn {
+    width: 32px; height: 32px; border: 1px solid var(--border);
+    background: var(--bg2); border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--text2); font-size: 16px;
+    transition: all .15s;
+  }
+  .cal-nav-btn:hover { background: var(--bg3); }
+  .cal-title { font-size: 15px; font-weight: 700; }
+  .cal-dow { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 3px; }
+  .cal-dow span { text-align: center; font-size: 11px; color: var(--text3); font-weight: 500; padding: 4px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .cal-day {
+    aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; font-size: 12px; font-family: var(--mono);
+    cursor: pointer; color: var(--text2); background: var(--bg2);
+    transition: all .15s; border: 1px solid transparent; position: relative;
+  }
+  .cal-day:hover { background: var(--bg3); }
+  .cal-day.has-record { background: rgba(196,74,30,0.1); color: var(--accent); font-weight: 700; border-color: rgba(196,74,30,0.2); }
+  .cal-day.today { border-color: var(--accent); }
+  .cal-day.empty { background: transparent; cursor: default; border: none; }
+  .cal-day.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .cal-day .dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; margin-top: 2px; }
+  .cal-detail { background: var(--bg2); border-radius: var(--radius-sm); padding: 12px; margin-top: 10px; }
+  .cal-detail-title { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 8px; font-family: var(--mono); }
+  .cal-detail-total { font-size: 12px; color: var(--text2); text-align: right; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 8px; }
+  .cal-detail-total span { font-family: var(--mono); color: var(--accent); font-weight: 700; }
+
+  /* Chart */
+  .chart-wrap { position: relative; }
+
+  /* Bar for type */
+  .type-bar { margin-bottom: 8px; }
+  .type-bar-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .type-bar-name { color: var(--text); font-weight: 500; }
+  .type-bar-val { font-family: var(--mono); color: var(--text2); }
+  .type-bar-track { height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+  .type-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .5s ease; }
+
+  /* Info box */
+  .info-box {
+    background: linear-gradient(135deg, rgba(196,74,30,0.05), rgba(232,184,75,0.05));
+    border: 1px solid rgba(196,74,30,0.15);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+  }
+  .info-box p { font-size: 12px; color: var(--text2); line-height: 1.7; }
+  .info-box strong { color: var(--accent); }
+
+  /* Settings */
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border2); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: 14px; font-weight: 500; }
+  .setting-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .setting-val { font-family: var(--mono); font-size: 14px; color: var(--text2); }
+  .btn-danger { background: rgba(196,74,30,0.1); color: var(--accent); border: 1px solid rgba(196,74,30,0.2); padding: 8px 16px; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-danger:hover { background: var(--accent); color: #fff; }
+
+  /* Filter */
+  .filter-row { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--text2); font-size: 12px; font-family: var(--font); font-weight: 500;
+    cursor: pointer; white-space: nowrap; transition: all .15s;
+  }
+  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Progress bar (daily limit) */
+  .daily-bar-wrap { margin-top: 12px; }
+  .daily-bar-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+  .daily-bar-header .val { font-family: var(--mono); font-weight: 500; }
+  .daily-bar-track { height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .daily-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease, background .3s; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-icon">🍶</div>
+        <div>
+          <div class="logo-text">飲酒レコード</div>
+          <div class="logo-sub" id="today-str">読み込み中...</div>
+        </div>
+      </div>
+      <div class="today-badge" id="today-alc-badge">今日 0g</div>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="showPage('record',this)">記録</button>
+      <button class="nav-btn" onclick="showPage('history',this)">履歴</button>
+      <button class="nav-btn" onclick="showPage('calendar',this)">カレンダー</button>
+      <button class="nav-btn" onclick="showPage('stats',this)">統計</button>
+    </nav>
+  </div>
+
+  <div class="content">
+
+    <!-- 記録ページ -->
+    <div class="page active" id="page-record">
+      <div class="card">
+        <div class="card-title">飲酒を記録</div>
+        <div class="field">
+          <label>日付</label>
+          <input type="date" id="inp-date">
+        </div>
+        <div class="field">
+          <label>種類</label>
+          <select id="inp-type" onchange="onTypeChange()">
+            <option value="ビール">🍺 ビール</option>
+            <option value="日本酒">🍶 日本酒</option>
+            <option value="焼酎">🥃 焼酎</option>
+            <option value="ワイン">🍷 ワイン</option>
+            <option value="ウイスキー">🥃 ウイスキー</option>
+            <option value="チューハイ">🥤 チューハイ</option>
+            <option value="ハイボール">🍹 ハイボール</option>
+            <option value="その他">🍸 その他</option>
+          </select>
+        </div>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field" style="margin:0">
+            <label>量 (ml)</label>
+            <input type="number" id="inp-amount" value="350" min="1" max="3000" oninput="updateAlcPreview()">
+          </div>
+          <div class="field" style="margin:0">
+            <label>度数 (%)</label>
+            <input type="number" id="inp-pct" value="5" min="0" max="100" step="0.5" oninput="updateAlcPreview()">
+          </div>
+        </div>
+        <div class="field">
+          <label>純アルコール量</label>
+          <div class="alc-preview">
+            <div class="alc-val alc-ok" id="alc-val">14.0</div>
+            <div class="alc-unit">g</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>メモ（任意）</label>
+          <input type="text" id="inp-note" placeholder="例：友人と居酒屋で">
+        </div>
+        <button class="btn btn-primary" onclick="addRecord()">記録する →</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">今日の状況</div>
+        <div id="today-summary">
+          <div class="daily-bar-wrap">
+            <div class="daily-bar-header">
+              <span>今日の摂取量</span>
+              <span class="val" id="daily-val">0g / 20g</span>
+            </div>
+            <div class="daily-bar-track">
+              <div class="daily-bar-fill" id="daily-bar" style="width:0%;background:var(--green)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <p>厚労省の指針では、1日あたりの純アルコール量は<strong>20g以下</strong>が目安です。缶ビール(350ml・5%)は約<strong>14g</strong>、日本酒1合は約<strong>22g</strong>です。</p>
+      </div>
+    </div>
+
+    <!-- 履歴ページ -->
+    <div class="page" id="page-history">
+      <div class="filter-row" id="history-filter">
+        <button class="filter-btn active" onclick="filterHistory('all',this)">すべて</button>
+        <button class="filter-btn" onclick="filterHistory('7d',this)">7日間</button>
+        <button class="filter-btn" onclick="filterHistory('30d',this)">30日間</button>
+        <button class="filter-btn" onclick="filterHistory('thisMonth',this)">今月</button>
+      </div>
+      <div class="card">
+        <div id="history-list"></div>
+      </div>
+    </div>
+
+    <!-- カレンダーページ -->
+    <div class="page" id="page-calendar">
+      <div class="card">
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="calMove(-1)">‹</button>
+          <div class="cal-title" id="cal-title"></div>
+          <button class="cal-nav-btn" onclick="calMove(1)">›</button>
+        </div>
+        <div class="cal-dow">
+          <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div id="cal-detail" style="display:none" class="cal-detail">
+          <div class="cal-detail-title" id="cal-detail-title"></div>
+          <div id="cal-detail-body"></div>
+          <div class="cal-detail-total">合計: <span id="cal-detail-total"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 統計ページ -->
+    <div class="page" id="page-stats">
+      <div class="metrics" id="metrics"></div>
+      <div class="card">
+        <div class="card-title">週別 純アルコール量</div>
+        <div class="chart-wrap" style="height:160px"><canvas id="weekChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">種類別</div>
+        <div id="type-breakdown"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">飲酒日カレンダー（過去90日）</div>
+        <div class="chart-wrap" style="height:120px"><canvas id="heatChart"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULTS = {ビール:5,日本酒:15,焼酎:25,ワイン:12,ウイスキー:43,チューハイ:5,ハイボール:7,その他:5};
+const AMOUNTS  = {ビール:350,日本酒:180,焼酎:60,ワイン:120,ウイスキー:45,チューハイ:350,ハイボール:350,その他:200};
+let records = JSON.parse(localStorage.getItem('sake_records')||'[]');
+let calYear, calMonth, histFilter='all', weekChartObj, heatChartObj;
+let selectedCalDay = null;
+
+function save(){ localStorage.setItem('sake_records', JSON.stringify(records)); }
+function calcAlc(ml,pct){ return Math.round(ml*(pct/100)*0.8*10)/10; }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmt(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+function init(){
+  const now = new Date();
+  document.getElementById('inp-date').value = today();
+  document.getElementById('today-str').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${['日','月','火','水','木','金','土'][now.getDay()]}）`;
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  updateAlcPreview();
+  updateTodayBadge();
+  renderDailyBar();
+}
+
+function updateAlcPreview(){
+  const ml = +document.getElementById('inp-amount').value||0;
+  const pct = +document.getElementById('inp-pct').value||0;
+  const g = calcAlc(ml,pct);
+  const el = document.getElementById('alc-val');
+  el.textContent = g.toFixed(1);
+  el.className = 'alc-val ' + (g<=14?'alc-ok':g<=20?'alc-warn':'alc-over');
+}
+
+function onTypeChange(){
+  const t = document.getElementById('inp-type').value;
+  document.getElementById('inp-pct').value = DEFAULTS[t]||5;
+  document.getElementById('inp-amount').value = AMOUNTS[t]||350;
+  updateAlcPreview();
+}
+
+function addRecord(){
+  const r = {
+    id: Date.now(),
+    date: document.getElementById('inp-date').value,
+    type: document.getElementById('inp-type').value,
+    amount: +document.getElementById('inp-amount').value,
+    pct: +document.getElementById('inp-pct').value,
+    note: document.getElementById('inp-note').value.trim(),
+    alc: calcAlc(+document.getElementById('inp-amount').value, +document.getElementById('inp-pct').value)
+  };
+  records.unshift(r); save();
+  updateAlcPreview(); updateTodayBadge(); renderDailyBar();
+  document.getElementById('inp-note').value='';
+  showToast('✓ 記録しました！');
+}
+
+function updateTodayBadge(){
+  const todayRecs = records.filter(r=>r.date===today());
+  const total = todayRecs.reduce((s,r)=>s+r.alc,0);
+  document.getElementById('today-alc-badge').textContent = `今日 ${total.toFixed(1)}g`;
+}
+
+function renderDailyBar(){
+  const todayRecs = records.filter(r=>r.date===today());
+  const total = todayRecs.reduce((s,r)=>s+r.alc,0);
+  const pct = Math.min(total/20*100,100);
+  const bar = document.getElementById('daily-bar');
+  bar.style.width = pct+'%';
+  bar.style.background = total<=14?'var(--green)':total<=20?'var(--accent2)':'var(--accent)';
+  document.getElementById('daily-val').textContent = `${total.toFixed(1)}g / 20g`;
+}
+
+function filterHistory(f, btn){
+  histFilter = f;
+  document.querySelectorAll('#history-filter .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistory();
+}
+
+function getFilteredRecords(){
+  const now = new Date(); const ms = now.getTime();
+  if(histFilter==='7d') return records.filter(r=>ms - new Date(r.date+'T00:00:00').getTime() <= 7*86400000);
+  if(histFilter==='30d') return records.filter(r=>ms - new Date(r.date+'T00:00:00').getTime() <= 30*86400000);
+  if(histFilter==='thisMonth'){
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    return records.filter(r=>r.date.startsWith(ym));
+  }
+  return records;
+}
+
+function renderHistory(){
+  const recs = getFilteredRecords();
+  const el = document.getElementById('history-list');
+  if(!recs.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>記録がありません</div>'; return;
+  }
+  el.innerHTML = recs.map(r=>`
+    <div class="record-item">
+      <div class="record-left">
+        <div class="record-type">${r.type}</div>
+        <div class="record-meta">${r.date} · ${r.amount}ml · ${r.pct}%</div>
+        ${r.note?`<div class="record-note">${r.note}</div>`:''}
+      </div>
+      <div class="record-right">
+        <div class="record-alc">${r.alc.toFixed(1)}g</div>
+        <button class="del-btn" onclick="deleteRecord(${r.id})">×</button>
+      </div>
+    </div>`).join('');
+}
+
+function deleteRecord(id){
+  records = records.filter(r=>r.id!==id); save();
+  renderHistory(); updateTodayBadge(); renderDailyBar();
+  showToast('削除しました');
+}
+
+// Calendar
+function renderCalendar(){
+  const firstDow = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const todayStr = today();
+  document.getElementById('cal-title').textContent = `${calYear}年${calMonth+1}月`;
+  const byDay={};
+  records.forEach(r=>{
+    if(r.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)){
+      (byDay[r.date]||(byDay[r.date]=[])).push(r);
+    }
+  });
+  let html='';
+  for(let i=0;i<firstDow;i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasRec=!!byDay[ds], isToday=ds===todayStr, isSel=ds===selectedCalDay;
+    html+=`<div class="cal-day${hasRec?' has-record':''}${isToday?' today':''}${isSel?' selected':''}" onclick="selectCalDay('${ds}')">${d}${hasRec?'<div class="dot"></div>':''}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+  if(selectedCalDay) showCalDetail(selectedCalDay);
+}
+
+function selectCalDay(ds){
+  selectedCalDay = ds; renderCalendar(); showCalDetail(ds);
+}
+
+function showCalDetail(ds){
+  const recs = records.filter(r=>r.date===ds);
+  const el = document.getElementById('cal-detail');
+  if(!recs.length){ el.style.display='none'; return; }
+  el.style.display='block';
+  const d=new Date(ds+'T00:00:00');
+  document.getElementById('cal-detail-title').textContent = `${d.getMonth()+1}月${d.getDate()}日の記録`;
+  document.getElementById('cal-detail-body').innerHTML = recs.map(r=>`
+    <div class="record-item">
+      <div class="record-left">
+        <div class="record-type" style="font-size:13px">${r.type} ${r.amount}ml</div>
+        ${r.note?`<div class="record-note">${r.note}</div>`:''}
+      </div>
+      <div class="record-alc">${r.alc.toFixed(1)}g</div>
+    </div>`).join('');
+  const total = recs.reduce((s,r)=>s+r.alc,0);
+  document.getElementById('cal-detail-total').textContent = total.toFixed(1)+'g';
+}
+
+function calMove(dir){
+  calMonth+=dir;
+  if(calMonth<0){calMonth=11;calYear--;}
+  if(calMonth>11){calMonth=0;calYear++;}
+  selectedCalDay=null;
+  renderCalendar();
+  document.getElementById('cal-detail').style.display='none';
+}
+
+// Stats
+function renderStats(){
+  const now = new Date();
+  const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const mRecs=records.filter(r=>r.date.startsWith(ym));
+  const totalAlc=mRecs.reduce((s,r)=>s+r.alc,0);
+  const drinkDays=new Set(mRecs.map(r=>r.date)).size;
+  const avg=drinkDays>0?totalAlc/drinkDays:0;
+  const sober=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-drinkDays;
+
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="metric-val">${totalAlc.toFixed(0)}g</div><div class="metric-lbl">今月の総アルコール</div></div>
+    <div class="metric"><div class="metric-val">${drinkDays}日</div><div class="metric-lbl">今月の飲酒日数</div></div>
+    <div class="metric"><div class="metric-val">${avg.toFixed(1)}g</div><div class="metric-lbl">1回あたり平均</div></div>
+    <div class="metric"><div class="metric-val">${sober}日</div><div class="metric-lbl">今月の休肝日</div></div>`;
+
+  renderWeekChart();
+  renderTypeBreakdown();
+  renderHeatChart();
+}
+
+function renderWeekChart(){
+  const weeks={};
+  records.forEach(r=>{
+    const d=new Date(r.date+'T00:00:00');
+    const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+    const key=mon.toISOString().slice(0,10).slice(5);
+    weeks[key]=(weeks[key]||0)+r.alc;
+  });
+  const keys=Object.keys(weeks).sort().slice(-8);
+  const vals=keys.map(k=>+weeks[k].toFixed(1));
+  const ctx=document.getElementById('weekChart').getContext('2d');
+  if(weekChartObj) weekChartObj.destroy();
+  weekChartObj=new Chart(ctx,{
+    type:'bar',
+    data:{labels:keys,datasets:[{data:vals,backgroundColor:'rgba(196,74,30,0.25)',borderColor:'#c44a1e',borderWidth:1.5,borderRadius:4,hoverBackgroundColor:'rgba(196,74,30,0.45)'}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw+'g'}}},
+      scales:{
+        x:{ticks:{font:{size:11},color:'#9e9b97'},grid:{display:false}},
+        y:{ticks:{font:{size:11},color:'#9e9b97',callback:v=>v+'g'},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function renderTypeBreakdown(){
+  const types={};
+  records.forEach(r=>{types[r.type]=(types[r.type]||0)+r.alc;});
+  const total=Object.values(types).reduce((a,b)=>a+b,0)||1;
+  const sorted=Object.entries(types).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('type-breakdown').innerHTML=sorted.map(([name,val])=>`
+    <div class="type-bar">
+      <div class="type-bar-header">
+        <span class="type-bar-name">${name}</span>
+        <span class="type-bar-val">${val.toFixed(1)}g</span>
+      </div>
+      <div class="type-bar-track">
+        <div class="type-bar-fill" style="width:${(val/total*100).toFixed(1)}%"></div>
+      </div>
+    </div>`).join('')||'<div class="empty" style="padding:16px 0">まだデータがありません</div>';
+}
+
+function renderHeatChart(){
+  const days=[];
+  const labels=[];
+  const now=new Date();
+  for(let i=89;i>=0;i--){
+    const d=new Date(now); d.setDate(d.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    const recs=records.filter(r=>r.date===ds);
+    const alc=recs.reduce((s,r)=>s+r.alc,0);
+    days.push(alc); labels.push(ds.slice(5));
+  }
+  const ctx=document.getElementById('heatChart').getContext('2d');
+  if(heatChartObj) heatChartObj.destroy();
+  heatChartObj=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        data:days,
+        backgroundColor:days.map(v=>v===0?'rgba(0,0,0,0.06)':v<=14?'rgba(45,122,58,0.5)':v<=20?'rgba(232,184,75,0.6)':'rgba(196,74,30,0.7)'),
+        borderWidth:0,borderRadius:2
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw===0?'休肝日':v.raw.toFixed(1)+'g'}}},
+      scales:{
+        x:{ticks:{display:false},grid:{display:false}},
+        y:{display:false,beginAtZero:true}
+      }
+    }
+  });
+}
+
+function showPage(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='history') renderHistory();
+  if(id==='calendar') renderCalendar();
+  if(id==='stats') renderStats();
+}
+
+init();
+</script>
+</body>
+</html>
